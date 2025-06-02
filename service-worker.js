@@ -1,15 +1,17 @@
 // service-worker.js
 
-// Give your cache a unique name. Increment this value if you want to force all clients
-// to download a new version of the cached files.
+// Give the cache a unique name. Bump this if you ever want to "refresh" everything.
 const CACHE_NAME = 'mycam-pwa-v1';
 
-// These are the files we want to cache. Because this service worker lives in the
-// same folder as index.html, manifest.json, icon-192.png, and icon-512.png, we
-// can refer to them by relative URL (no leading slash). That way, when this SW
-// is served from https://codermikhael.github.io/mycam-pwa-drive/service-worker.js,
-// each of these “foo.png” entries resolves to
-// https://codermikhael.github.io/mycam-pwa-drive/foo.png, etc.
+// We only list files that actually live in the same folder as this SW.
+// Because this file is served from
+//   https://codermikhael.github.io/mycam-pwa-drive/service-worker.js
+// using *relative* paths here (no leading slash) means it will fetch
+//   https://codermikhael.github.io/mycam-pwa-drive/index.html
+//   https://codermikhael.github.io/mycam-pwa-drive/manifest.json
+//   https://codermikhael.github.io/mycam-pwa-drive/icon-192.png
+//   https://codermikhael.github.io/mycam-pwa-drive/icon-512.png
+// etc. If any of these 404, the install will fail, so make sure each file exists exactly.
 const URLS_TO_CACHE = [
   'index.html',
   'manifest.json',
@@ -18,25 +20,24 @@ const URLS_TO_CACHE = [
   'icon-512.png'
 ];
 
-// During the “install” event, open our cache and add the listed URLs.
-// If any URL is missing (404), the promise will reject and the SW will fail to install.
-// That is why we must ensure each of these files actually exists at those paths.
+
+// Install handler: open the cache and pre-cache the “app shell” files.
 self.addEventListener('install', (event) => {
   console.log('[Service Worker] Install event');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[Service Worker] Caching app shell and assets');
+        console.log('[Service Worker] Caching app shell');
         return cache.addAll(URLS_TO_CACHE);
       })
       .catch((err) => {
-        console.error('[Service Worker] Failed to cache during install:', err);
+        console.error('[Service Worker] Install failed – one or more files missing:', err);
       })
   );
 });
 
-// During activation, remove any old caches that don’t match the current CACHE_NAME.
-// This helps keep storage clean when you update CACHE_NAME.
+
+// Activate handler: delete any old cache whose name doesn’t match CACHE_NAME.
 self.addEventListener('activate', (event) => {
   console.log('[Service Worker] Activate event');
   event.waitUntil(
@@ -51,45 +52,58 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  // Claim clients immediately so that the page is controlled by this SW without reloading.
+  // Claim any clients immediately so the page is under SW control without a reload.
   return self.clients.claim();
 });
 
-// Intercept all fetch requests. If the request matches something in our cache, serve it
-// from cache. Otherwise, fetch from network as usual.
+
+// Fetch handler: try cache first, then network, then cache the network response for future.
+// BUT: only attempt to cache “same-origin” requests (i.e. http/https under our scope).
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests (e.g., skip POST/PUT)
+  // Only handle GET requests
   if (event.request.method !== 'GET') {
     return;
   }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // If we have a cached response, return it immediately.
+      // Return the cached response if found.
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      // Otherwise, fetch from network and optionally cache the result.
-      return fetch(event.request)
-        .then((networkResponse) => {
-          // If response is invalid or not OK, just return it (no caching).
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-            return networkResponse;
-          }
+      // Otherwise, do a network fetch
+      return fetch(event.request).then((networkResponse) => {
+        // If invalid response, just pass it through. No caching.
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
+        }
 
-          // Otherwise, clone and store a copy in the cache for future use.
+        // At this point, it’s a “basic” 200 OK from a same-origin request.
+        // But double-check that the URL is under *this* service worker’s scope.
+        // Use self.registration.scope, which (for GitHub Pages) will be:
+        //   https://codermikhael.github.io/mycam-pwa-drive/
+        // Any request with a URL starting with that string is safe to cache.
+        const requestUrl = new URL(event.request.url);
+        const swScope   = self.registration.scope; // e.g. "https://codermikhael.github.io/mycam-pwa-drive/"
+
+        if (event.request.url.startsWith(swScope)) {
+          // Clone the response so we can put one copy into cache and return the other copy to the page.
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(event.request, responseToCache).catch(err => {
+              console.warn('[Service Worker] cache.put failed for', event.request.url, err);
+            });
           });
-          return networkResponse;
-        })
-        .catch((error) => {
-          // If network fetch fails (e.g. offline), you could return a fallback here.
-          console.error('[Service Worker] Fetch failed:', error);
-          throw error;
-        });
+        }
+        // Return the original network response to the page.
+        return networkResponse;
+      }).catch((error) => {
+        // If both cache and network fail (e.g. offline and nothing cached), you could
+        // return a fallback asset here. For now, just rethrow so the page sees the error.
+        console.error('[Service Worker] Fetch failed for:', event.request.url, error);
+        throw error;
+      });
     })
   );
 });
