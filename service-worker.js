@@ -13,11 +13,11 @@ const CACHE_NAME = 'mycam-pwa-v1';
 //   https://codermikhael.github.io/mycam-pwa-drive/icon-512.png
 // etc. If any of these 404, the install will fail, so make sure each file exists exactly.
 const URLS_TO_CACHE = [
-  '/mycam-pwd-drive/index.html',
-  '/mycam-pwd-drive/manifest.json',
-  '/mycam-pwd-drive/service-worker.js',
-  '/mycam-pwd-drive/icon-192.png',
-  '/mycam-pwd-drive/icon-512.png'
+  '/mycam-pwa-drive/index.html',
+  '/mycam-pwa-drive/manifest.json',
+  '/mycam-pwa-drive/service-worker.js',
+  '/mycam-pwa-drive/icon-192.png',
+  '/mycam-pwa-drive/icon-512.png'
 ];
 
 
