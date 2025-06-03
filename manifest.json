@@ -1,8 +1,8 @@
 {
-  "name": "MyCam PWA with Drive",
-  "short_name": "MyCamPWA",
+  "name": "MyCam Flask PWA Gallery",
+  "short_name": "MyCam",
+  "start_url": ".",
   "display": "standalone",
-  "start_url": "/",
   "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [

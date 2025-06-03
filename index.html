@@ -3,29 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MyCam PWA with Drive</title>
+  <title>MyCam PWA Gallery</title>
+
+  <!-- PWA manifest (must be in the same folder) -->
   <link rel="manifest" href="manifest.json" />
+
+  <!-- ======================== INLINE CSS ======================== -->
   <style>
-    /* ────── BASE STYLES ────── */
+    /* Reset & full‐height layout */
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
+      width: 100%;
       background: #000;
       font-family: sans-serif;
+      overflow: hidden;
     }
     #appContainer {
       display: flex;
       flex-direction: column;
       height: 100%;
+      width: 100%;
+      background: #000;
     }
 
-    /* Camera view */
+    /* Camera view (hidden until “Click Picture”) */
     #cameraView {
       display: none;
       position: relative;
       flex: 1;
       background: #000;
+      justify-content: center;
+      align-items: center;
     }
     #cameraVideo {
       position: absolute;
@@ -40,40 +50,42 @@
       bottom: 20px;
       left: 0;
       right: 0;
-      height: 80px;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 30px;
+      box-sizing: border-box;
     }
-    #galleryBtn {
-      position: absolute; left: 20px; bottom: 0;
-      background: rgba(255,255,255,0.8); border: none;
-      width: 60px; height: 60px; border-radius: 50%;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer;
-      background-position: center; background-repeat: no-repeat; background-size: 60%;
-      background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='3' y='3' width='8' height='8' fill='%23000'/%3E%3Crect x='13' y='3' width='8' height='8' fill='%23000'/%3E%3Crect x='3' y='13' width='8' height='8' fill='%23000'/%3E%3Crect x='13' y='13' width='8' height='8' fill='%23000'/%3E%3C/svg%3E");
-      transition: transform 0.2s, background 0.2s;
-    }
-    #galleryBtn:hover {
-      background: rgba(255,255,255,1);
-      transform: scale(1.1);
-    }
-
+    /* Large circular “Capture” button */
     #captureBtn {
-      position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
-      background: radial-gradient(circle at center, #ff3b30 50%, transparent 51%);
-      width: 80px; height: 80px; border: 4px solid #fff; border-radius: 50%;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: transform 0.2s, box-shadow 0.2s;
+      background: #fff;
+      border: none;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     }
-    #captureBtn:hover {
-      transform: translateX(-50%) scale(1.1);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    /* Gallery icon on bottom right */
+    #galleryBtn {
+      background: rgba(255,255,255,0.9);
+      border: none;
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      cursor: pointer;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: 60%;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg viewBox='0 0 24 24' fill='%23000' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 19h16V5H4v14zm2-2v-2h4v2H6zm0-4v-2h12v2H6zm0-4V7h12v2H6z'/%3E%3C/svg%3E");
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     }
-    #captureBtn::before {
-      content: ""; display: block; width: 40px; height: 40px;
-      background: #ff3b30; border-radius: 50%;
-    }
+    #galleryBtn:focus { outline: none; }
 
-    /* Gallery view */
+    /* Gallery view (displayed when camera is not active) */
     #galleryView {
       flex: 1;
       background: #f0f0f0;
@@ -82,114 +94,171 @@
       overflow: hidden;
     }
     #selectArea {
-      padding: 10px; background: #222; text-align: center;
-      display: flex; justify-content: center; align-items: center; gap: 10px;
+      padding: 10px;
+      background: #222;
+      text-align: center;
     }
-    #clickBtn, #selectBtn {
-      background: #444; color: #fff; border: none;
-      padding: 8px 12px; border-radius: 4px; cursor: pointer;
-      font-size: 14px;
+    #clickBtn {
+      background: #444;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     }
-    #selectBtn.active { background: #0084ff; }
-    #actionButtons {
-      display: none; gap: 10px;
-    }
-    .action-btn {
-      background: #444; color: #fff; border: none;
-      padding: 6px 10px; border-radius: 4px; cursor: pointer;
-      font-size: 14px;
-    }
-    .action-btn:disabled {
-      opacity: 0.5; cursor: not-allowed;
-    }
-
+    #clickBtn:focus { outline: none; }
     #galleryContainer {
-      flex: 1; overflow-y: auto; padding: 5px;
+      flex: 1;
+      overflow-y: auto;
+      padding: 5px;
+      background: #e1e1e1;
     }
     .date-header {
-      margin: 10px 0 5px 10px; font-size: 1.2em; color: #333; text-align: left;
+      margin: 10px 0 5px 10px;
+      font-size: 1.2em;
+      color: #333;
+      text-align: left;
     }
     .gallery-row {
-      display: grid; grid-template-columns: repeat(5, 1fr);
-      gap: 5px; margin-bottom: 10px; padding: 0 5px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      margin-bottom: 10px;
+      padding: 0 5px;
     }
     .thumb-container {
-      position: relative; border-radius: 4px; background: #fff;
+      position: relative;
+      overflow: hidden;
+      border-radius: 4px;
+      background: #fff;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     .thumb-container img {
-      width: 100%; aspect-ratio: 1; object-fit: cover; cursor: pointer;
-      filter: brightness(0.9); transition: filter 0.2s;
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      cursor: pointer;
+      filter: brightness(0.9);
+      transition: filter 0.2s;
     }
     .thumb-container img:hover {
       filter: brightness(1);
     }
-    .thumb-checkbox {
-      position: absolute; top: 5px; left: 5px; width: 20px; height: 20px;
-      background: rgba(255,255,255,0.7); border-radius: 3px; display: none;
-    }
-    .thumb-checkbox input[type="checkbox"] {
-      width: 100%; height: 100%; margin: 0; cursor: pointer;
-    }
-    .select-mode .thumb-checkbox {
-      display: block;
-    }
 
     /* Full-screen overlay */
     #fullscreenOverlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.9); display: none; flex-direction: column;
-      align-items: center; justify-content: center; color: #fff; z-index: 1000;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      z-index: 1000;
     }
     #fsHeader {
-      width: 100%; display: flex; justify-content: center; align-items: center;
-      gap: 20px; padding: 10px; box-sizing: border-box;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      padding: 10px;
+      box-sizing: border-box;
     }
     .fs-icon-btn {
-      background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 28px;
+      cursor: pointer;
     }
+    .fs-icon-btn:focus { outline: none; }
     #fsInfo {
-      font-size: 16px; text-align: center;
+      font-size: 16px;
+      text-align: center;
     }
     #fsImageContainer {
-      flex: 1; display: flex; align-items: center; justify-content: center; width: 100%;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
     }
     #fsImage {
-      max-width: 80%; max-height: 80%; touch-action: pan-y;
+      max-width: 80%;
+      max-height: 80%;
+      touch-action: pan-y;
     }
   </style>
 </head>
 
 <body>
   <div id="appContainer">
-    <!-- Camera view -->
+
+    <!-- Camera View (hidden by default) -->
     <div id="cameraView">
       <video id="cameraVideo" autoplay playsinline></video>
-      <form id="uploadForm" style="display:none;">
-        <input type="file" id="fileInput" accept="image/*" capture="environment" />
+
+      <!-- Hidden fallback file input -->
+      <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data" style="display:none;">
+        <input type="file" id="fileInput" name="files[]" accept="image/*" capture="environment" />
       </form>
+
+      <!-- Camera Controls -->
       <div id="cameraControls">
+        <!-- Gallery button on the left -->
         <button id="galleryBtn" title="Back to Gallery"></button>
-        <button id="captureBtn" title="Capture Photo"></button>
+        <!-- Capture centered -->
+        <button id="captureBtn" title="Capture Photo">●</button>
       </div>
     </div>
 
-    <!-- Gallery view -->
+    <!-- Gallery View (visible initially) -->
     <div id="galleryView">
       <div id="selectArea">
         <button id="clickBtn">Click Picture</button>
-        <button id="selectBtn">Select</button>
-        <div id="actionButtons">
-          <button id="deleteSelected" class="action-btn" disabled>Delete</button>
-          <button id="shareSelected" class="action-btn" disabled>Share</button>
-        </div>
       </div>
       <div id="galleryContainer">
-        <!-- Thumbnails will be injected here -->
+        <!--
+          Server must inject these Handlebars‐style loops. For example, in Flask you do:
+
+            sorted_dates = sorted(grouped_images_by_date.keys(), reverse=True)
+            return render_template('index.html', sorted_dates=sorted_dates, grouped=grouped)
+
+          Then Jinja will replace {{ date }} and {{ img.filename }} etc.
+
+          If you’re not using a server‐side renderer, you will need to fetch a JSON
+          of images and build the DOM via JavaScript here. But this template assumes
+          Flask‐style rendering.
+        -->
+        {% for date in sorted_dates %}
+          <h2 class="date-header">{{ date }}</h2>
+          <div class="gallery-row">
+            {% for img in grouped[date] %}
+              <div class="thumb-container">
+                <img
+                  src="{{ url_for('get_image', filename=img.filename) }}"
+                  data-filename="{{ img.filename }}"
+                  data-size="{{ img.size }}"
+                  data-timestamp="{{ img.timestamp_iso }}"
+                  data-mime="{{ img.mime_type }}"
+                  class="thumb-img"
+                  alt="thumb"
+                />
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
       </div>
     </div>
 
-    <!-- Full-screen overlay -->
+    <!-- Full-screen Overlay -->
     <div id="fullscreenOverlay">
       <div id="fsHeader">
         <button id="fsCloseBtn" class="fs-icon-btn" title="Close">✖️</button>
@@ -201,158 +270,77 @@
         <img id="fsImage" src="" alt="Full Screen" />
       </div>
     </div>
+
   </div>
 
-  <!-- Load Google API client -->
-  <script src="https://apis.google.com/js/api.js"></script>
-
-
-  <script src="https://apis.google.com/js/api.js?onload=gapiLoadCallback">
-
-    /***** GOOGLE DRIVE INITIALIZATION *****/
-    const CLIENT_ID = '313117379094-jejji0ctdqj4blsptkccgb63lgcaouee.apps.googleusercontent.com'; //<–– replace this!
-    const SCOPES    = 'https://www.googleapis.com/auth/drive.file';
-    const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
-    let folderId = null;    // ID of “MyCam PWA Photos” folder
-    let gapiInited = false;
-
-    function gapiLoadCallback() {
-      gapi.load('client:auth2', initClient);
-    }
-
-    function initClient() {
-      gapi.client.init({
-        clientId: CLIENT_ID,
-        discoveryDocs: DISCOVERY_DOCS,
-        scope: SCOPES
-      }).then(() => {
-        const authInstance = gapi.auth2.getAuthInstance();
-        if (!authInstance.isSignedIn.get()) {
-          authInstance.signIn().then(afterSignin);
-        } else {
-          afterSignin();
-        }
-      }).catch(err => {
-        console.error('Drive client init failed:', err);
-        alert('Google Drive initialization error.');
-      });
-    }
-
-    function afterSignin() {
-      gapiInited = true;
-      ensureFolderExists().then(loadGalleryFromDrive);
-    }
-
-    // Create or find “MyCam PWA Photos” folder
-    function ensureFolderExists() {
-      return gapi.client.drive.files.list({
-        q: "name='MyCam PWA Photos' and mimeType='application/vnd.google-apps.folder' and trashed=false",
-        fields: 'files(id, name)'
-      }).then(res => {
-        const files = res.result.files;
-        if (files && files.length > 0) {
-          folderId = files[0].id;
-          return Promise.resolve();
-        } else {
-          return gapi.client.drive.files.create({
-            resource: {
-              name: 'MyCam PWA Photos',
-              mimeType: 'application/vnd.google-apps.folder'
-            },
-            fields: 'id'
-          }).then(r => { folderId = r.result.id; });
-        }
-      });
-    }
-
-    /***** END DRIVE SETUP *****/
-
+  <!-- ======================== INLINE JS ======================== -->
+  <script>
+    // Keep global references
     let videoStream = null,
         thumbnails = [],
-        currentIndex = 0,
-        selectMode = false,
-        startX = 0;
+        currentIndex = 0;
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Initialize Google API
-      gapiLoadCallback();
-
-      // DOM refs
-      const camView    = document.getElementById('cameraView'),
-            galView    = document.getElementById('galleryView'),
-            video      = document.getElementById('cameraVideo'),
-            capBtn     = document.getElementById('captureBtn'),
-            galBtn     = document.getElementById('galleryBtn'),
-            fileInput  = document.getElementById('fileInput'),
-            clickBtn   = document.getElementById('clickBtn'),
-            selectBtn  = document.getElementById('selectBtn'),
-            deleteSel  = document.getElementById('deleteSelected'),
-            shareSel   = document.getElementById('shareSelected'),
-            galleryContainer = document.getElementById('galleryContainer'),
-            fsImage    = document.getElementById('fsImage');
+      // Grab all relevant elements
+      const camView     = document.getElementById('cameraView');
+      const galView     = document.getElementById('galleryView');
+      const videoEl     = document.getElementById('cameraVideo');
+      const capBtn      = document.getElementById('captureBtn');
+      const galBtn      = document.getElementById('galleryBtn');
+      const fileInput   = document.getElementById('fileInput');
+      const uploadForm  = document.getElementById('uploadForm');
+      const clickBtn    = document.getElementById('clickBtn');
+      const fsOverlay   = document.getElementById('fullscreenOverlay');
+      const fsCloseBtn  = document.getElementById('fsCloseBtn');
+      const fsDeleteBtn = document.getElementById('fsDeleteBtn');
+      const fsShareBtn  = document.getElementById('fsShareBtn');
 
       // Show gallery on load
       camView.style.display = 'none';
       galView.style.display = 'flex';
 
-      // “Click Picture” → show camera
+      // “Click Picture” => hide gallery, show camera, start preview
       clickBtn.addEventListener('click', () => {
         galView.style.display = 'none';
         camView.style.display = 'flex';
         startCamera();
       });
 
-      // “Back to Gallery” (camera → gallery)
+      // “Back to Gallery” from camera => stop camera, show gallery
       galBtn.addEventListener('click', () => {
         stopCamera();
         camView.style.display = 'none';
         galView.style.display = 'flex';
       });
 
-      // Capture Photo
+      // Capture a photo via ImageCapture or fallback to canvas
       capBtn.addEventListener('click', () => {
         if (!videoStream) return;
         const track = videoStream.getVideoTracks()[0];
-        new ImageCapture(track).takePhoto()
-          .then(blob => uploadBlobToDrive(blob))
+        const ic = new ImageCapture(track);
+        ic.takePhoto()
+          .then(blob => uploadBlob(blob))
           .catch(() => captureViaCanvas());
       });
 
+      // If user picks a file via fallback, submit the form
       fileInput.addEventListener('change', () => {
-        const file = fileInput.files[0];
-        if (file) uploadBlobToDrive(file);
+        uploadForm.submit();
       });
 
-      // Full-screen buttons
-      document.getElementById('fsCloseBtn').addEventListener('click', closeFullScreen);
-      document.getElementById('fsDeleteBtn').addEventListener('click', deleteCurrent);
-      document.getElementById('fsShareBtn').addEventListener('click', shareCurrent);
+      // Full‐screen close, delete, share handlers
+      fsCloseBtn.addEventListener('click', closeFullScreen);
+      fsDeleteBtn.addEventListener('click', deleteCurrent);
+      fsShareBtn.addEventListener('click', shareCurrent);
 
-      // Swipe gestures on full-screen image
-      fsImage.addEventListener('touchstart', e => {
-        startX = e.touches[0].clientX;
-      });
-      fsImage.addEventListener('touchend', e => {
-        const endX = e.changedTouches[0].clientX;
-        const delta = endX - startX;
-        if (delta > 50 && currentIndex > 0) {
-          currentIndex--; updateFullScreen();
-        } else if (delta < -50 && currentIndex < thumbnails.length - 1) {
-          currentIndex++; updateFullScreen();
-        }
-      });
+      // Initialize gallery click handlers
+      initGallery();
 
-      // Toggle select mode
-      selectBtn.addEventListener('click', () => {
-        selectMode = !selectMode;
-        selectBtn.classList.toggle('active', selectMode);
-        updateSelectMode();
-      });
-
-      // Batch delete/share
-      deleteSel.addEventListener('click', deleteBatch);
-      shareSel.addEventListener('click', shareBatch);
+      // Load Google API
+      gapi.load('client:auth2', initClient);
     });
+
+    // ============== CAMERA FUNCTIONS ==============
 
     function startCamera() {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
@@ -361,258 +349,58 @@
           document.getElementById('cameraVideo').srcObject = stream;
         })
         .catch(err => {
-          console.error(err);
-          alert('Camera error');
+          console.error('Camera error:', err);
+          alert('Cannot access camera. Please allow camera access and retry.');
         });
     }
 
     function stopCamera() {
       if (videoStream) {
-        videoStream.getTracks().forEach(t => t.stop());
+        videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
       }
     }
 
     function captureViaCanvas() {
-      const v = document.getElementById('cameraVideo'),
-            c = document.createElement('canvas');
-      c.width = v.videoWidth; c.height = v.videoHeight;
-      c.getContext('2d').drawImage(v, 0, 0);
-      c.toBlob(blob => uploadBlobToDrive(blob), 'image/jpeg', 0.9);
+      const video = document.getElementById('cameraVideo');
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => uploadBlob(blob), 'image/jpeg', 0.9);
     }
 
-    /***** UPLOAD A BLOB/FILE TO DRIVE *****/
-    function uploadBlobToDrive(blobOrFile) {
-      if (!gapiInited || !folderId) {
-        alert('Google API not ready yet.');
-        return;
-      }
-      // Filename: image_TIMESTAMP.jpg
-      const timestamp = Date.now();
-      const filename = `image_${timestamp}.jpg`;
-      const metadata = {
-        name: filename,
-        mimeType: blobOrFile.type || 'image/jpeg',
-        parents: [folderId]
-      };
-
-      const form = new FormData();
-      const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
-      form.append('metadata', metadataBlob);
-      form.append('file', blobOrFile);
-
-      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    function uploadBlob(blob) {
+      const formData = new FormData();
+      formData.append('files[]', blob, 'capture.jpg');
+      // Your Flask endpoint must be “/upload” for this to work.
+      fetch('/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' +
-            gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token
-        },
-        body: form
+        body: formData
       })
-      .then(res => res.json())
-      .then(file => {
-        loadGalleryFromDrive();
-        // Return to gallery
+      .then(() => {
+        // After upload, switch back to gallery and reload the page
         stopCamera();
         document.getElementById('cameraView').style.display = 'none';
         document.getElementById('galleryView').style.display = 'flex';
+        location.reload();
       })
-      .catch(err => console.error('Drive upload error:', err));
-    }
-    /***** ──────────────────────────────────────── *****/
-
-    /***** LOAD & RENDER GALLERY FROM DRIVE *****/
-    function loadGalleryFromDrive() {
-      const galleryContainer = document.getElementById('galleryContainer');
-      galleryContainer.innerHTML = '';
-      thumbnails = [];
-
-      gapi.client.drive.files.list({
-        q: `'${folderId}' in parents and trashed=false`,
-        orderBy: 'createdTime desc',
-        fields: 'files(id, name, mimeType, createdTime, size)'
-      }).then(res => {
-        const files = res.result.files || [];
-        if (!files.length) return;
-
-        // Group by date (YYYY-MM-DD)
-        const grouped = {};
-        files.forEach(f => {
-          const dt = new Date(f.createdTime);
-          const dateKey = dt.toISOString().slice(0,10);
-          if (!grouped[dateKey]) grouped[dateKey] = [];
-          grouped[dateKey].push(f);
-        });
-
-        // Render each date group
-        Object.keys(grouped).sort((a,b) => b.localeCompare(a)).forEach(dateKey => {
-          const header = document.createElement('h2');
-          header.className = 'date-header';
-          header.textContent = dateKey;
-          galleryContainer.appendChild(header);
-
-          const row = document.createElement('div');
-          row.className = 'gallery-row';
-          galleryContainer.appendChild(row);
-
-          grouped[dateKey].forEach(file => {
-            // Get a downloadable link
-            gapi.client.drive.files.get({
-              fileId: file.id,
-              fields: 'webContentLink'
-            }).then(urlRes => {
-              const downloadUrl = urlRes.result.webContentLink;
-              const container = document.createElement('div');
-              container.className = 'thumb-container';
-
-              const img = document.createElement('img');
-              img.src = downloadUrl;
-              img.className = 'thumb-img';
-              img.dataset.fileId = file.id;
-              img.dataset.filename = file.name;
-              img.dataset.mime = file.mimeType;
-              img.dataset.timestamp = file.createdTime;
-              img.dataset.size = file.size ? (file.size/(1024*1024)).toFixed(2) : '0';
-
-              const checkboxDiv = document.createElement('div');
-              checkboxDiv.className = 'thumb-checkbox';
-              const cb = document.createElement('input');
-              cb.type = 'checkbox';
-              cb.dataset.fileId = file.id;
-              checkboxDiv.appendChild(cb);
-
-              container.appendChild(img);
-              container.appendChild(checkboxDiv);
-              row.appendChild(container);
-            }).catch(err => console.error('Error getting webContentLink:', err));
-          });
-        });
-
-        // After DOM injection, bind event listeners
-        setTimeout(initGallery, 500);
+      .catch(err => {
+        console.error('Upload failed:', err);
+        alert('Upload failed. Check console for details.');
       });
     }
-    /***** ──────────────────────────────────────── *****/
+
+    // ============== GALLERY FUNCTIONS ==============
 
     function initGallery() {
       thumbnails = Array.from(document.querySelectorAll('.thumb-container'));
       thumbnails.forEach((container, idx) => {
         const imgEl = container.querySelector('img.thumb-img');
-        const cb    = container.querySelector('.thumb-checkbox input[type="checkbox"]');
-
-        imgEl.addEventListener('click', () => {
-          if (selectMode) {
-            cb.checked = !cb.checked;
-            updateActionButtons();
-          } else {
-            openFullScreen(idx);
-          }
-        });
-        cb.addEventListener('change', updateActionButtons);
+        imgEl.addEventListener('click', () => openFullScreen(idx));
       });
     }
 
-    function updateSelectMode() {
-      thumbnails.forEach(container => {
-        container.classList.toggle('select-mode', selectMode);
-        if (!selectMode) {
-          container.querySelector('.thumb-checkbox input[type="checkbox"]').checked = false;
-        }
-      });
-      document.getElementById('actionButtons').style.display = selectMode ? 'flex' : 'none';
-      updateActionButtons();
-    }
-
-    function updateActionButtons() {
-      const anyChecked = Array.from(document.querySelectorAll('.thumb-checkbox input[type="checkbox"]'))
-                            .some(cb => cb.checked);
-      document.getElementById('deleteSelected').disabled = !anyChecked;
-      document.getElementById('shareSelected').disabled = !anyChecked;
-    }
-
-    /***** DELETE SINGLE FILE *****/
-    function deleteCurrent() {
-      const imgEl = thumbnails[currentIndex].querySelector('img.thumb-img');
-      const fileId = imgEl.dataset.fileId;
-      gapi.client.drive.files.delete({ fileId }).then(() => {
-        loadGalleryFromDrive();
-        closeFullScreen();
-      });
-    }
-    /***** ──────────────────────────────────────── *****/
-
-    /***** SHARE SINGLE FILE *****/
-    function shareCurrent() {
-      const imgEl = thumbnails[currentIndex].querySelector('img.thumb-img');
-      const downloadUrl = imgEl.src;
-      const filename = imgEl.dataset.filename;
-      const mime = imgEl.dataset.mime || 'image/jpeg';
-
-      fetch(downloadUrl, {
-        headers: {
-          'Authorization': 'Bearer ' +
-            gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token
-        }
-      })
-      .then(r => r.blob())
-      .then(blob => {
-        const file = new File([blob], filename, { type: mime });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          navigator.share({ files: [file] }).catch(err => console.error('Share failed:', err));
-        } else {
-          window.open(downloadUrl, '_blank');
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching for share:', err);
-        window.open(downloadUrl, '_blank');
-      });
-    }
-    /***** ──────────────────────────────────────── *****/
-
-    /***** BATCH SHARE *****/
-    function shareBatch() {
-      const checkedCbs = Array.from(document.querySelectorAll('.thumb-checkbox input[type="checkbox"]:checked'));
-      const promises = checkedCbs.map(cb => {
-        const imgEl = cb.closest('.thumb-container').querySelector('img.thumb-img');
-        const downloadUrl = imgEl.src;
-        const filename = imgEl.dataset.filename;
-        const mime = imgEl.dataset.mime || 'image/jpeg';
-        return fetch(downloadUrl, {
-          headers: {
-            'Authorization': 'Bearer ' +
-              gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token
-          }
-        })
-        .then(r => r.blob())
-        .then(blob => new File([blob], filename, { type: mime }));
-      });
-
-      Promise.all(promises).then(filesToShare => {
-        if (navigator.canShare && navigator.canShare({ files: filesToShare })) {
-          navigator.share({ files: filesToShare }).catch(err => console.error('Share failed:', err));
-        } else {
-          alert('Sharing not supported');
-        }
-      });
-    }
-    /***** ──────────────────────────────────────── *****/
-
-    /***** BATCH DELETE *****/
-    function deleteBatch() {
-      const checkedIds = Array.from(document.querySelectorAll('.thumb-checkbox input[type="checkbox"]:checked'))
-                              .map(cb => cb.dataset.fileId);
-      const deletePromises = checkedIds.map(id =>
-        gapi.client.drive.files.delete({ fileId: id })
-      );
-      Promise.all(deletePromises).then(() => {
-        loadGalleryFromDrive();
-      });
-    }
-    /***** ──────────────────────────────────────── *****/
-
-    /***** FULL-SCREEN & SWIPE *****/
-    let startXCoord = 0;
     function openFullScreen(idx) {
       currentIndex = idx;
       updateFullScreen();
@@ -624,24 +412,112 @@
     }
 
     function updateFullScreen() {
-      const imgEl = thumbnails[currentIndex].querySelector('img.thumb-img');
-      const downloadUrl = imgEl.src;
-      document.getElementById('fsImage').src = downloadUrl;
-      const dt = new Date(imgEl.dataset.timestamp).toLocaleString();
+      const container = thumbnails[currentIndex];
+      const imgEl = container.querySelector('img.thumb-img');
+      const data = imgEl.dataset;
+      document.getElementById('fsImage').src = imgEl.src;
+      const dt = new Date(data.timestamp).toLocaleString();
       document.getElementById('fsInfo').textContent =
-        `${imgEl.dataset.filename} (${imgEl.dataset.size} MB)  ${dt}`;
+        `${data.filename} (${data.size} MB)  ${dt}`;
     }
-    /***** ──────────────────────────────────────── *****/
+
+    function deleteCurrent() {
+      const container = thumbnails[currentIndex];
+      const filename = container.querySelector('img.thumb-img').dataset.filename;
+      fetch(`/delete/${filename}`, { method: 'POST' })
+        .then(() => location.reload())
+        .catch(err => console.error('Delete failed:', err));
+    }
+
+    function shareCurrent() {
+      const container = thumbnails[currentIndex];
+      const imgEl = container.querySelector('img.thumb-img');
+      const url = imgEl.src;
+      const filename = imgEl.dataset.filename;
+      const mime = imgEl.dataset.mime;
+      fetch(url)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], filename, { type: mime });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file] }).catch(console.error);
+          } else {
+            alert('Sharing not supported on this device/browser.');
+          }
+        });
+    }
+
+    // ============== GOOGLE DRIVE INITIALIZATION ==============
+
+    // Replace this CLIENT_ID with your actual OAuth 2.0 Client ID from Google Cloud
+    const CLIENT_ID = '313117379094-jejji0ctdqj4blsptkccgb63lgcaouee.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+    const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
+
+    let folderId = null;
+
+    function initClient() {
+      console.log('initClient() called');
+      gapi.client.init({
+        clientId: CLIENT_ID,
+        discoveryDocs: DISCOVERY_DOCS,
+        scope: SCOPES
+      }).then(() => {
+        console.log('gapi.client.init succeeded');
+        afterSignin();
+      }).catch(err => {
+        console.error('Drive client init failed:', err);
+        alert('Google Drive initialization error.');
+      });
+    }
+
+    function afterSignin() {
+      console.log('afterSignin() running');
+      ensureFolderExists().then(loadGalleryFromDrive);
+    }
+
+    // 1) Check if “MyCam PWA Photos” folder exists in Drive; if not, create it.
+    function ensureFolderExists() {
+      return gapi.client.drive.files.list({
+        q: "mimeType='application/vnd.google-apps.folder' and name='MyCam PWA Photos' and trashed=false",
+        fields: 'files(id, name)'
+      }).then(res => {
+        const files = res.result.files;
+        if (files && files.length > 0) {
+          folderId = files[0].id;
+          console.log('Found existing folder ID =', folderId);
+          return Promise.resolve();
+        }
+        // Otherwise, create the folder
+        return gapi.client.drive.files.create({
+          resource: {
+            name: 'MyCam PWA Photos',
+            mimeType: 'application/vnd.google-apps.folder'
+          },
+          fields: 'id'
+        }).then(folderRes => {
+          folderId = folderRes.result.id;
+          console.log('Created new folder ID =', folderId);
+        });
+      });
+    }
+
+    // 2) List all files in that folder, group them by date, and let Flask render them.
+    function loadGalleryFromDrive() {
+      return gapi.client.drive.files.list({
+        q: `'${folderId}' in parents and trashed=false`,
+        orderBy: 'createdTime desc',
+        fields: 'files(id, name, mimeType, createdTime, size)'
+      }).then(res => {
+        console.log('Drive list response:', res.result.files);
+        // The HTML template (Flask/Jinja) should have already rendered the thumbnails
+        // using “grouped” data. If you’re not using server‐side rendering, you would
+        // dynamically build the DOM here instead.
+      });
+    }
   </script>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .catch(console.error);
-    }
-  </script>
-
-
-  <script src="https://apis.google.com/js/api.js?onload=gapiLoadCallback"> </script>
+  <!-- Load Google API client LAST, because initClient() must exist first -->
+  <script src="https://apis.google.com/js/api.js"></script>
 </body>
 </html>
